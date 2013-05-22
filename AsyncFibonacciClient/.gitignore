@@ -10,7 +10,7 @@
 
 # generated files
 bin/
-gen/
+gen/*
 libs/
 obj/
 
