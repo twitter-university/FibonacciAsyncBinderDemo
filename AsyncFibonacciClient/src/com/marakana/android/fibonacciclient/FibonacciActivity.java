@@ -95,8 +95,20 @@ public class FibonacciActivity extends Activity implements OnClickListener,
 		this.button.setOnClickListener(this);
 		// the button will be enabled once we connect to the service
 		this.button.setEnabled(false);
+		// restore output if possible (e.g. on configuration change)
+		if (savedInstanceState != null) {
+			Log.d(TAG, "Restoring output");
+			this.output.setText(savedInstanceState.getCharSequence("output"));
+		}
 	}
 
+	@Override
+	protected void onSaveInstanceState(Bundle outState) {
+		super.onSaveInstanceState(outState);
+		outState.putCharSequence("output", this.output.getText());
+		Log.d(TAG, "Saved output");
+	}
+	
 	@Override
 	protected void onStart() {
 		Log.d(TAG, "onStart()'ed");
