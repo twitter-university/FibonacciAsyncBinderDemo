@@ -1,5 +1,7 @@
 package com.marakana.android.fibonacciclient;
 
+import java.util.Locale;
+
 import android.app.Activity;
 import android.app.Dialog;
 import android.app.ProgressDialog;
@@ -71,8 +73,10 @@ public class FibonacciActivity extends Activity implements OnClickListener,
 		@Override
 		public void onResponse(FibonacciResponse response)
 				throws RemoteException {
-			String result = String.format("%d in %d ms", response.getResult(),
-					response.getTimeInMillis());
+			Locale locale = FibonacciActivity.this.getResources()
+					.getConfiguration().locale;
+			String result = String.format(locale, "%d in %d ms",
+					response.getResult(), response.getTimeInMillis());
 			Log.d(TAG, "Got response: " + result);
 			// since we cannot update the UI from a non-UI thread,
 			// we'll send the result to the responseHandler (defined above)
@@ -108,7 +112,7 @@ public class FibonacciActivity extends Activity implements OnClickListener,
 		outState.putCharSequence("output", this.output.getText());
 		Log.d(TAG, "Saved output");
 	}
-	
+
 	@Override
 	protected void onStart() {
 		Log.d(TAG, "onStart()'ed");
