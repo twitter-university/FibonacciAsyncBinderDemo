@@ -1,17 +1,11 @@
 package com.marakana.android.fibonacciclient;
 
-import java.util.Locale;
-
 import android.app.Activity;
-import android.app.Dialog;
-import android.app.ProgressDialog;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.IBinder;
-import android.os.Message;
 import android.os.RemoteException;
 import android.os.SystemClock;
 import android.text.TextUtils;
@@ -24,20 +18,12 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 
 import com.marakana.android.fibonaccicommon.FibonacciRequest;
-import com.marakana.android.fibonaccicommon.FibonacciResponse;
 import com.marakana.android.fibonaccicommon.IFibonacciService;
-import com.marakana.android.fibonaccicommon.IFibonacciServiceResponseListener;
 
 public class FibonacciActivity extends Activity implements OnClickListener,
-		ServiceConnection {
+		ServiceConnection, FibonacciFragment.OnResultListener {
 
 	private static final String TAG = "FibonacciActivity";
-
-	// the id of a message to our response handler
-	private static final int RESPONSE_MESSAGE_ID = 1;
-
-	// the id of a progress dialog that we'll be creating
-	private static final int PROGRESS_DIALOG_ID = 1;
 
 	private EditText input; // our input n
 
@@ -49,42 +35,7 @@ public class FibonacciActivity extends Activity implements OnClickListener,
 
 	private IFibonacciService service; // reference to our service
 
-	// the responsibility of the responseHandler is to take messages
-	// from the responseListener (defined below) and display their content
-	// in the UI thread
-	private final Handler responseHandler = new Handler() {
-		@Override
-		public void handleMessage(Message message) {
-			switch (message.what) {
-			case RESPONSE_MESSAGE_ID:
-				Log.d(TAG, "Handling response");
-				FibonacciActivity.this.output.setText((String) message.obj);
-				FibonacciActivity.this.removeDialog(PROGRESS_DIALOG_ID);
-				break;
-			}
-		}
-	};
-
-	// the responsibility of the responseListener is to receive call-backs
-	// from the service when our FibonacciResponse is available
-	private final IFibonacciServiceResponseListener responseListener = new IFibonacciServiceResponseListener.Stub() {
-
-		// this method is executed on one of the pooled binder threads
-		@Override
-		public void onResponse(FibonacciResponse response)
-				throws RemoteException {
-			Locale locale = FibonacciActivity.this.getResources()
-					.getConfiguration().locale;
-			String result = String.format(locale, "%d in %d ms",
-					response.getResult(), response.getTimeInMillis());
-			Log.d(TAG, "Got response: " + result);
-			// since we cannot update the UI from a non-UI thread,
-			// we'll send the result to the responseHandler (defined above)
-			Message message = FibonacciActivity.this.responseHandler
-					.obtainMessage(RESPONSE_MESSAGE_ID, result);
-			FibonacciActivity.this.responseHandler.sendMessage(message);
-		}
-	};
+	private FibonacciFragment fibonacciFragment;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -99,6 +50,9 @@ public class FibonacciActivity extends Activity implements OnClickListener,
 		this.button.setOnClickListener(this);
 		// the button will be enabled once we connect to the service
 		this.button.setEnabled(false);
+		// reconnect to our fragment (if it exists)
+		this.fibonacciFragment = (FibonacciFragment) super.getFragmentManager()
+				.findFragmentByTag("fibFrag");
 		// restore output if possible (e.g. on configuration change)
 		if (savedInstanceState != null) {
 			Log.d(TAG, "Restoring output");
@@ -152,21 +106,6 @@ public class FibonacciActivity extends Activity implements OnClickListener,
 		this.button.setEnabled(false);
 	}
 
-	@Override
-	protected Dialog onCreateDialog(int id) {
-		switch (id) {
-		case PROGRESS_DIALOG_ID:
-			// this dialog will be opened in onClick(...) and
-			// dismissed/removed by responseHandler.handleMessage(...)
-			ProgressDialog dialog = new ProgressDialog(this);
-			dialog.setMessage(super.getText(R.string.progress_text));
-			dialog.setIndeterminate(true);
-			return dialog;
-		default:
-			return super.onCreateDialog(id);
-		}
-	}
-
 	// handle button clicks
 	public void onClick(View view) {
 		// parse n from input (or report errors)
@@ -201,18 +140,35 @@ public class FibonacciActivity extends Activity implements OnClickListener,
 			return;
 		}
 
+		this.fibonacciFragment = new FibonacciFragment();
+
 		final FibonacciRequest request = new FibonacciRequest(n, type);
 		try {
 			Log.d(TAG, "Submitting request...");
 			long time = SystemClock.uptimeMillis();
 			// submit the request; the response will come to responseListener
-			this.service.fib(request, this.responseListener);
+			this.service.fib(request,
+					this.fibonacciFragment.getResponseListener());
 			time = SystemClock.uptimeMillis() - time;
 			Log.d(TAG, "Submited request in " + time + " ms");
-			// this dialog will be dismissed/removed by responseHandler
-			super.showDialog(PROGRESS_DIALOG_ID);
+			this.button.setEnabled(false);
+			super.getFragmentManager().beginTransaction()
+					.add(this.fibonacciFragment, "fibFrag").commit();
+			Log.d(TAG, "Passed control to " + this.fibonacciFragment);
 		} catch (RemoteException e) {
 			Log.wtf(TAG, "Failed to communicate with the service", e);
 		}
+	}
+
+	// called from fragment
+	public void onResult(String result) {
+		Log.d(TAG, "Posting result: " + result);
+		this.output.setText(result);
+		this.button.setEnabled(true);
+		// git rid of our fragment
+		super.getFragmentManager().beginTransaction()
+				.remove(this.fibonacciFragment).commit();
+		this.fibonacciFragment = null;
+		Log.d(TAG, "Removed fragment");
 	}
 }
