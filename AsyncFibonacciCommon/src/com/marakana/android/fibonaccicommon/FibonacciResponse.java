@@ -26,6 +26,11 @@ public class FibonacciResponse implements Parcelable {
 		return timeInMillis;
 	}
 
+	@Override
+	public String toString() {
+		return "{" + this.getResult() + "," + this.getTimeInMillis() + " ms}";
+	}
+
 	public int describeContents() {
 		return 0;
 	}

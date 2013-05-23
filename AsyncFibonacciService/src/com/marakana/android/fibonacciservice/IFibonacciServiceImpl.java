@@ -18,13 +18,13 @@ public class IFibonacciServiceImpl extends IFibonacciService.Stub {
 	public void fib(final FibonacciRequest request,
 			final IFibonacciServiceResponseListener listener)
 			throws RemoteException {
+		Log.d(TAG, "fib(" + request + ")");
 		new AsyncTask<Void, Void, Void>() {
 			@Override
 			protected Void doInBackground(Void... params) {
-				long n = request.getN();
-				Log.d(TAG, "fib(" + n + ")");
+				final long n = request.getN();
+				final long result;
 				long timeInMillis = SystemClock.uptimeMillis();
-				long result;
 				switch (request.getType()) {
 				case ITERATIVE_JAVA:
 					result = FibLib.fibJI(n);
@@ -45,8 +45,10 @@ public class IFibonacciServiceImpl extends IFibonacciService.Stub {
 				Log.d(TAG, String.format("Got fib(%d) = %d in %d ms", n,
 						result, timeInMillis));
 				try {
-					listener.onResponse(new FibonacciResponse(result,
-							timeInMillis));
+					FibonacciResponse fibonacciResponse = new FibonacciResponse(
+							result, timeInMillis);
+					listener.onResponse(fibonacciResponse);
+					Log.d(TAG, "Sent to listener: " + fibonacciResponse);
 				} catch (RemoteException e) {
 					Log.wtf(TAG, "Failed to notify listener", e);
 				}

@@ -29,6 +29,11 @@ public class FibonacciRequest implements Parcelable {
 		return type;
 	}
 
+	@Override
+	public String toString() {
+		return "{" + this.getN() + "," + this.getType() + "}";
+	}
+
 	public int describeContents() {
 		return 0;
 	}

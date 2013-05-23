@@ -1,5 +1,7 @@
 package com.marakana.android.fibonacciclient;
 
+import java.util.Locale;
+
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Intent;
@@ -18,10 +20,11 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 
 import com.marakana.android.fibonaccicommon.FibonacciRequest;
+import com.marakana.android.fibonaccicommon.FibonacciResponse;
 import com.marakana.android.fibonaccicommon.IFibonacciService;
 
 public class FibonacciActivity extends Activity implements OnClickListener,
-		ServiceConnection, FibonacciFragment.OnResultListener {
+		ServiceConnection, FibonacciFragment.FibonacciActivityResponseListener {
 
 	private static final String TAG = "FibonacciActivity";
 
@@ -35,7 +38,7 @@ public class FibonacciActivity extends Activity implements OnClickListener,
 
 	private IFibonacciService service; // reference to our service
 
-	private FibonacciFragment fibonacciFragment;
+	private FibonacciFragment fibonacciFragment; // holder of our listener
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -140,15 +143,14 @@ public class FibonacciActivity extends Activity implements OnClickListener,
 			return;
 		}
 
-		this.fibonacciFragment = new FibonacciFragment();
-
 		final FibonacciRequest request = new FibonacciRequest(n, type);
+		this.fibonacciFragment = new FibonacciFragment();
 		try {
-			Log.d(TAG, "Submitting request...");
+			Log.d(TAG, "Submitting request: " + request);
 			long time = SystemClock.uptimeMillis();
-			// submit the request; the response will come to responseListener
-			this.service.fib(request,
-					this.fibonacciFragment.getResponseListener());
+			// submit the request; the response will come to listener
+			this.service.fib(request, this.fibonacciFragment
+					.getIFibonacciServiceResponseListener());
 			time = SystemClock.uptimeMillis() - time;
 			Log.d(TAG, "Submited request in " + time + " ms");
 			this.button.setEnabled(false);
@@ -160,8 +162,12 @@ public class FibonacciActivity extends Activity implements OnClickListener,
 		}
 	}
 
-	// called from fragment
-	public void onResult(String result) {
+	// called by listener -> handler -> fragment (on the UI thread)
+	public void onResponse(FibonacciResponse fibonacciResponse) {
+		Locale locale = this.getResources().getConfiguration().locale;
+		String result = String.format(locale, "%d in %d ms",
+				fibonacciResponse.getResult(),
+				fibonacciResponse.getTimeInMillis());
 		Log.d(TAG, "Posting result: " + result);
 		this.output.setText(result);
 		this.button.setEnabled(true);
